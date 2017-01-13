@@ -303,6 +303,7 @@ public class BluetoothClientImpl implements IBluetoothClient, ProxyInterceptor, 
         });
     }
 
+    // worker handler
     private void saveNotifyListener(String mac, UUID service, UUID character, BleNotifyResponse response) {
         HashMap<String, List<BleNotifyResponse>> listenerMap = mNotifyResponses.get(mac);
         if (listenerMap == null) {
@@ -320,6 +321,7 @@ public class BluetoothClientImpl implements IBluetoothClient, ProxyInterceptor, 
         responses.add(response);
     }
 
+    // worker handler
     private void removeNotifyListener(String mac, UUID service, UUID character) {
         HashMap<String, List<BleNotifyResponse>> listenerMap = mNotifyResponses.get(mac);
         if (listenerMap != null) {
@@ -328,6 +330,7 @@ public class BluetoothClientImpl implements IBluetoothClient, ProxyInterceptor, 
         }
     }
 
+    // worker handler
     private void clearNotifyListener(String mac) {
         mNotifyResponses.remove(mac);
     }
@@ -623,8 +626,14 @@ public class BluetoothClientImpl implements IBluetoothClient, ProxyInterceptor, 
         BluetoothReceiver.getInstance().register(new BluetoothBondStateChangeListener() {
 
             @Override
-            public void onBondStateChanged(String mac, int bondState) {
-                dispatchBondStateChanged(mac, bondState);
+            public void onBondStateChanged(final String mac, final int bondState) {
+                mWorkerHandler.post(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        dispatchBondStateChanged(mac, bondState);
+                    }
+                });
             }
         });
     }
@@ -649,14 +658,14 @@ public class BluetoothClientImpl implements IBluetoothClient, ProxyInterceptor, 
         BluetoothReceiver.getInstance().register(new BleConnectStatusChangeListener() {
             @Override
             public void onConnectStatusChanged(final String mac, final int status) {
-                if (status == Constants.STATUS_DISCONNECTED) {
-                    clearNotifyListener(mac);
-                }
-
                 mWorkerHandler.post(new Runnable() {
 
                     @Override
                     public void run() {
+                        if (status == Constants.STATUS_DISCONNECTED) {
+                            clearNotifyListener(mac);
+                        }
+
                         dispatchConnectionStatus(mac, status);
                     }
                 });
